@@ -48,6 +48,7 @@ mod error;
 mod api;
 mod auth;
 mod config;
+mod continuum;
 mod crypto;
 #[macro_use]
 mod db;
