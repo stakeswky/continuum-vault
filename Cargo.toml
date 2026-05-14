@@ -166,6 +166,9 @@ rpassword = "7.3.1"
 # Loading a dynamic CSS Stylesheet
 grass_compiler = { version = "0.13.4", default-features = false }
 
+[dev-dependencies]
+mockito = "1.6.1"
+
 # Strip debuginfo from the release builds
 # The symbols are the provide better panic traces
 # Also enable fat LTO and use 1 codegen unit for optimizations
