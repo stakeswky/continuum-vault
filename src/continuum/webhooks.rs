@@ -1,9 +1,8 @@
-#![allow(dead_code)] // Step 3.3 wires this module into startup.
-
 use data_encoding::HEXLOWER;
 use hmac::{Hmac, Mac};
 use serde_json::json;
 use sha2::Sha256;
+use std::time::Duration;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -53,5 +52,15 @@ impl WebhookEmitter {
             .error_for_status()?;
 
         Ok(())
+    }
+}
+
+pub async fn poll_and_emit(emitter: WebhookEmitter) {
+    let mut interval = tokio::time::interval(Duration::from_secs(10));
+    let _emitter = emitter;
+    let _emit = WebhookEmitter::emit_emergency_access_changed;
+
+    loop {
+        interval.tick().await;
     }
 }

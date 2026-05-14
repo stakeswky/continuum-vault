@@ -49,6 +49,7 @@ dotenvy = { version = "0.15.7", default-features = false }
 
 # Lazy initialization
 once_cell = "1.20.2"
+ctor = "0.2.9"
 
 # Numerical libraries
 num-traits = "0.2.19"
