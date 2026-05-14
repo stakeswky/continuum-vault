@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  vault-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: vaultwarden
+      POSTGRES_USER: vault
+      POSTGRES_PASSWORD: ${VAULT_DB_PASSWORD:-vaultpass}
+    volumes:
+      - vaultdb:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vault -d vaultwarden"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  vault:
+    build:
+      context: .
+      dockerfile: Dockerfile.continuum
+    environment:
+      DATABASE_URL: postgresql://vault:${VAULT_DB_PASSWORD:-vaultpass}@vault-db:5432/vaultwarden
+      ROCKET_ADDRESS: 0.0.0.0
+      ROCKET_PORT: 8080
+      SIGNUPS_ALLOWED: "false"
+      INVITATIONS_ALLOWED: "false"
+      WEB_VAULT_ENABLED: "false"
+      SSO_ENABLED: "true"
+      SSO_ONLY: "true"
+      SSO_AUTHORITY: ${CONTINUUM_BRIDGE_URL:-http://host.docker.internal:8011}
+      SSO_CLIENT_ID: vaultwarden
+      SSO_CLIENT_SECRET: ${SSO_CLIENT_SECRET:-dev-sso-secret}
+      SSO_SCOPES: "openid email profile"
+      CONTINUUM_BRIDGE_URL: ${CONTINUUM_BRIDGE_URL:-http://host.docker.internal:8011}
+      CONTINUUM_WEBHOOK_SECRET: ${CONTINUUM_WEBHOOK_SECRET:-dev-webhook-secret}
+      DOMAIN: ${VAULT_PUBLIC_URL:-http://localhost:8081}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-admin-token}
+    depends_on:
+      vault-db:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
+
+volumes:
+  vaultdb: {}
