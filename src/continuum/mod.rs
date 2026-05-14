@@ -12,6 +12,8 @@ fn _continuum_init() {
 }
 
 pub fn register_webhooks() {
+    let _validator = custom_item_validators::validate_continuum_fields;
+
     let Ok(bridge_url) = std::env::var("CONTINUUM_BRIDGE_URL") else {
         return;
     };
