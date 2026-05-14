@@ -36,11 +36,15 @@ services:
       CONTINUUM_WEBHOOK_SECRET: ${CONTINUUM_WEBHOOK_SECRET:-dev-webhook-secret}
       DOMAIN: ${VAULT_PUBLIC_URL:-http://localhost:8081}
       ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-admin-token}
+      DATA_FOLDER: /data
     depends_on:
       vault-db:
         condition: service_healthy
     ports:
       - "8081:8080"
+    volumes:
+      - vaultdata:/data
 
 volumes:
   vaultdb: {}
+  vaultdata: {}
