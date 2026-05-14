@@ -3,6 +3,8 @@ mod webhooks;
 
 #[tokio::test]
 async fn webhook_emits_signed_payload() {
+    let _poll_hook = webhooks::poll_and_emit;
+
     let mut server = mockito::Server::new_async().await;
     let m = server
         .mock("POST", "/internal/vault-events")
