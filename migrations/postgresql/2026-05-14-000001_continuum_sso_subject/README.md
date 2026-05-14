@@ -14,3 +14,15 @@ The migration is additive and reversible:
 - `continuum_sso_subject TEXT NULL`
 - `continuum_provisioned_at TIMESTAMP NULL`
 - partial unique index on non-null `continuum_sso_subject`
+
+## Policy
+
+Continuum migrations must not edit upstream Vaultwarden migration directories.
+Each extension should be added as a new timestamped migration directory so
+monthly upstream rebases can separate Continuum changes from upstream schema
+history.
+
+All Continuum-specific columns must be nullable or otherwise backwards
+compatible with an upstream-only Vaultwarden binary. If a future migration
+requires stricter constraints, add them only after the bridge has backfilled
+existing data and record the compatibility window in this README.
