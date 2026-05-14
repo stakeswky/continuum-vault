@@ -1,0 +1,36 @@
+name: continuum-vault CI
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git remote add upstream https://github.com/dani-garcia/vaultwarden.git
+      - run: git fetch upstream
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --features postgresql --no-default-features --release
+      - run: cargo test --features postgresql --no-default-features
+      - run: bash .ci/check-no-upstream-touch.sh
+      - run: |
+          if grep -rqI bitwarden_license Cargo.toml src/; then
+            echo "ERROR: BSL bitwarden_license dependency leaked in"
+            exit 1
+          fi
+
+  rebase-dryrun:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git remote add upstream https://github.com/dani-garcia/vaultwarden.git
+      - run: git fetch upstream
+      - run: git rebase upstream/main || echo "::warning::rebase conflict - manual intervention"
