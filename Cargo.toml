@@ -124,6 +124,8 @@ handlebars = { version = "6.2.0", features = ["dir_source"] }
 
 # HTTP client (Used for favicons, version check, DUO and HIBP API)
 reqwest = { version = "0.12.9", features = ["native-tls-alpn", "stream", "json", "gzip", "brotli", "socks", "cookies"] }
+hmac = "0.12.1"
+sha2 = "0.10.8"
 hickory-resolver = "0.24.1"
 
 # Favicon extraction libraries
