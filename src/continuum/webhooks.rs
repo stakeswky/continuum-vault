@@ -1,3 +1,5 @@
+#![allow(dead_code)] // Step 3.3 wires this module into startup.
+
 use data_encoding::HEXLOWER;
 use hmac::{Hmac, Mac};
 use serde_json::json;
