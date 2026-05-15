@@ -4,6 +4,14 @@ on:
   push:
     branches: [main]
   pull_request: {}
+  schedule:
+    - cron: "0 9 1 * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
   build:
@@ -24,13 +32,78 @@ jobs:
             exit 1
           fi
 
-  rebase-dryrun:
+  monthly-upstream-rebase:
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - run: git remote add upstream https://github.com/dani-garcia/vaultwarden.git
-      - run: git fetch upstream
-      - run: git rebase upstream/main || echo "::warning::rebase conflict - manual intervention"
+      - name: Configure git identity
+        run: |
+          git config user.name "continuum-vault rebase bot"
+          git config user.email "continuum-vault-rebase-bot@users.noreply.github.com"
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/dani-garcia/vaultwarden.git
+          git fetch origin main
+          git fetch upstream main
+      - name: Attempt upstream rebase
+        id: rebase
+        shell: bash
+        run: |
+          set +e
+          before="$(git rev-parse HEAD)"
+          upstream_head="$(git rev-parse upstream/main)"
+          branch="automation/upstream-rebase-$(date -u +%Y-%m-%d)-${GITHUB_RUN_ID}"
+          git switch -c "$branch"
+          git rebase "$upstream_head"
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            conflicts="$(git diff --name-only --diff-filter=U | sort)"
+            {
+              echo "Monthly upstream rebase failed against dani-garcia/vaultwarden@$upstream_head."
+              echo
+              echo "Conflicting files:"
+              echo
+              if [ -n "$conflicts" ]; then
+                printf '%s\n' "$conflicts" | sed 's/^/- /'
+              else
+                echo "- <git did not report unmerged files>"
+              fi
+            } > rebase-conflict.md
+            echo "outcome=conflict" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          {
+            echo "Monthly upstream rebase completed cleanly."
+            echo
+            echo "Upstream release-note diff:"
+            echo
+            git log --oneline --no-merges "$before..$upstream_head" || true
+          } > rebase-release-notes.md
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "outcome=clean" >> "$GITHUB_OUTPUT"
+      - name: Open conflict issue
+        if: steps.rebase.outputs.outcome == 'conflict'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create rebase-conflict --color B60205 --description "Monthly upstream rebase conflict" || true
+          gh issue create \
+            --title "Monthly upstream rebase conflict $(date -u +%Y-%m-%d)" \
+            --label rebase-conflict \
+            --body-file rebase-conflict.md
+      - name: Push clean rebase branch
+        if: steps.rebase.outputs.outcome == 'clean'
+        run: git push origin "${{ steps.rebase.outputs.branch }}"
+      - name: Open clean rebase pull request
+        if: steps.rebase.outputs.outcome == 'clean'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr create \
+            --base main \
+            --head "${{ steps.rebase.outputs.branch }}" \
+            --title "Monthly upstream rebase $(date -u +%Y-%m-%d)" \
+            --body-file rebase-release-notes.md
