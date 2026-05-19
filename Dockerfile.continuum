@@ -1,5 +1,24 @@
-FROM rust:1.82 AS builder
+# Stage 1: fetch the pre-built Bitwarden web vault from bw_web_builds releases.
+# Building from source requires ~12GB RAM for the npm step (OOMs on 8GB Docker
+# VMs); the official release tarballs are dani-garcia's GPG-signed output of
+# that same build pipeline. Trust boundary is identical to using their Docker
+# image, but ~30 s to fetch+verify vs 30 min to compile.
+FROM debian:bookworm-slim AS web-vault-builder
+WORKDIR /build
+ARG BW_WEB_BUILDS_TAG=v2026.4.1
+ARG WEB_VAULT_SHA256=BW_VAULT_SHA_PLACEHOLDER
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl tar \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSLO "https://github.com/dani-garcia/bw_web_builds/releases/download/${BW_WEB_BUILDS_TAG}/bw_web_${BW_WEB_BUILDS_TAG}.tar.gz" \
+    && curl -fsSLO "https://github.com/dani-garcia/bw_web_builds/releases/download/${BW_WEB_BUILDS_TAG}/sha256sums.txt" \
+    && grep -E "bw_web_${BW_WEB_BUILDS_TAG}\.tar\.gz$" sha256sums.txt | sha256sum -c - \
+    && tar -xzf "bw_web_${BW_WEB_BUILDS_TAG}.tar.gz" \
+    && rm "bw_web_${BW_WEB_BUILDS_TAG}.tar.gz" sha256sums.txt
+# Output is in /build/web-vault/ (the tarball's top-level dir)
 
+# Stage 2: compile vaultwarden (Continuum patch namespace included via COPY .)
+FROM rust:1.82 AS builder
 WORKDIR /build
 RUN apt-get update \
     && apt-get install -y --no-install-recommends pkg-config libpq-dev \
@@ -7,11 +26,13 @@ RUN apt-get update \
 COPY . .
 RUN cargo build --features postgresql --no-default-features --release
 
+# Stage 3: runtime image bundles both binary and web-vault assets
 FROM debian:bookworm-slim
-
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates libpq5 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /build/target/release/vaultwarden /usr/local/bin/
+COPY --from=web-vault-builder /build/web-vault /web-vault
+ENV WEB_VAULT_FOLDER=/web-vault
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/vaultwarden"]
