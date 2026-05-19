@@ -25,7 +25,7 @@ services:
       ROCKET_PORT: 8080
       SIGNUPS_ALLOWED: "false"
       INVITATIONS_ALLOWED: "false"
-      WEB_VAULT_ENABLED: "false"
+      WEB_VAULT_ENABLED: "true"
       SSO_ENABLED: "true"
       SSO_ONLY: "true"
       SSO_AUTHORITY: ${CONTINUUM_BRIDGE_URL:-http://host.docker.internal:8011}
