@@ -4,10 +4,12 @@
 use ctor::ctor;
 
 pub mod custom_item_validators;
+pub mod startup_guard;
 pub mod webhooks;
 
 #[ctor]
 fn _continuum_init() {
+    startup_guard::enforce();
     register_webhooks();
 }
 
